@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merge these keys into your existing ios/Runner/Info.plist
+  Required by nearby_connections and permission_handler
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- Bluetooth -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Domino Lwa3rin uses Bluetooth to find nearby players for local multiplayer.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Domino Lwa3rin uses Bluetooth to connect with nearby devices.</string>
+
+    <!-- Local Network (Wi-Fi P2P) -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Domino Lwa3rin uses Wi-Fi to find and connect to nearby players.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_nearby._tcp</string>
+        <string>_nearby._udp</string>
+    </array>
+
+    <!-- Location (required by nearby_connections on iOS) -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Location is needed to discover nearby players over Wi-Fi Direct.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Location is needed to discover nearby players over Wi-Fi Direct.</string>
+
+</dict>
+</plist>
