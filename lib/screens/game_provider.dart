@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:vibration/vibration.dart';
 import '../models/tile.dart';
 import '../models/player.dart';
 import '../models/game_state.dart';
 import '../logic/game_logic.dart';
 import '../logic/ai_logic.dart';
+import '../logic/profile_service.dart';
 import '../networking/nearby_service.dart';
+import '../networking/firebase_service.dart';
 
 class GameProvider extends ChangeNotifier {
   GameState? _state;
@@ -17,6 +21,12 @@ class GameProvider extends ChangeNotifier {
   bool _soundEnabled = true;
   bool get soundEnabled => _soundEnabled;
 
+  String _tileSkin = 'classic';
+  String get tileSkin => _tileSkin;
+
+  String _boardColor = 'green';
+  String get boardColor => _boardColor;
+
   // Timer
   Timer? _timer;
   int _timerRemaining = 30;
@@ -25,10 +35,55 @@ class GameProvider extends ChangeNotifier {
   // Chat
   final List<ChatMessage> chatMessages = [];
 
+  // Persistence
+  final ProfileService _profileService = ProfileService();
+  Player? _userProfile;
+  Player? get userProfile => _userProfile;
+
+  // Audio & Feedback
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   // Network
   final NearbyService nearbyService = NearbyService();
+  final FirebaseService firebaseService = FirebaseService();
   bool get isNetworkGame =>
       _state?.players.any((p) => p.isNetwork) ?? false;
+
+  bool _isOnlineMatch = false;
+  bool get isOnlineMatch => _isOnlineMatch;
+  String? _onlineGameId;
+
+  void _triggerFeedback() async {
+    if (!_soundEnabled) return;
+    try {
+      // Play a real tile sound
+      await _audioPlayer.play(AssetSource('sounds/tile_place.mp3'));
+      // Haptic vibration
+      if (await Vibration.hasVibrator()) {
+        Vibration.vibrate(duration: 50);
+      }
+    } catch (e) {
+      debugPrint('Feedback error: $e');
+    }
+  }
+
+  GameProvider() {
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    _userProfile = await _profileService.loadProfile();
+    final settings = await _profileService.loadSettings();
+    _tileSkin = settings['tileSkin'] ?? 'classic';
+    _boardColor = settings['boardColor'] ?? 'green';
+    notifyListeners();
+  }
+
+  Future<void> saveUserProfile(Player p) async {
+    _userProfile = p;
+    await _profileService.saveProfile(p);
+    notifyListeners();
+  }
 
   void setLang(String l) {
     _lang = l;
@@ -43,16 +98,17 @@ class GameProvider extends ChangeNotifier {
   // ── Game setup ──────────────────────────────────────────────
 
   void startVsAI({
-    required String playerName,
     required AIDifficulty difficulty,
     required GameRule rule,
-    required String boardColor,
+    String? boardColor,
+    bool isTurbo = false,
   }) {
     final players = [
-      Player(index: 0, name: playerName, type: PlayerType.human),
+      _userProfile?.copyWith(index: 0, type: PlayerType.human) ??
+          Player(index: 0, name: 'Player', type: PlayerType.human),
       Player(index: 1, name: 'AI', type: PlayerType.ai, difficulty: difficulty),
     ];
-    _initGame(players: players, rule: rule, boardColor: boardColor);
+    _initGame(players: players, rule: rule, boardColor: boardColor ?? _boardColor, isTurbo: isTurbo);
   }
 
   void startLocalMulti({
@@ -60,6 +116,7 @@ class GameProvider extends ChangeNotifier {
     required GameRule rule,
     required String boardColor,
     required bool teamMode,
+    bool isTurbo = false,
   }) {
     final players = List.generate(
       names.length,
@@ -70,7 +127,7 @@ class GameProvider extends ChangeNotifier {
         team: i % 2,
       ),
     );
-    _initGame(players: players, rule: rule, boardColor: boardColor, teamMode: teamMode);
+    _initGame(players: players, rule: rule, boardColor: boardColor, teamMode: teamMode, isTurbo: isTurbo);
   }
 
   void _initGame({
@@ -78,6 +135,7 @@ class GameProvider extends ChangeNotifier {
     required GameRule rule,
     required String boardColor,
     bool teamMode = false,
+    bool isTurbo = false,
   }) {
     final deck = shuffleDeck(makeDeck());
     final tilesEach = players.length == 4 ? 5 : 7;
@@ -110,10 +168,48 @@ class GameProvider extends ChangeNotifier {
       teamMode: teamMode,
       teamScores: [0, 0],
       boardColor: boardColor,
+      timerEnabled: true,
+      timerDuration: isTurbo ? 10 : 30,
+      isTurbo: isTurbo,
     );
+
+    _isOnlineMatch = false; // Reset for local games
+    _onlineGameId = null;
 
     _startTurn();
     notifyListeners();
+  }
+
+  void startOnlineGame({
+    required List<Player> players,
+    required String gameId,
+  }) {
+    _isOnlineMatch = true;
+    _onlineGameId = gameId;
+    
+    // For Wave 3, we'll use a simplified online start.
+    // In a full sync, the Host would share the deck.
+    _initGame(
+      players: players,
+      rule: GameRule.draw,
+      boardColor: 'green',
+    );
+    
+    _isOnlineMatch = true; // Set again as _initGame resets it
+    _onlineGameId = gameId;
+
+    firebaseService.listenForMoves(gameId, (move) {
+      if (move['type'] == 'place') {
+        final tile = DominoTile(id: move['tileId'], sideA: move['sideA'], sideB: move['sideB']);
+        final newState = GameLogic.placeTile(_state!, tile, move['side']);
+        if (newState != null) {
+          _state = newState;
+          _triggerFeedback();
+          notifyListeners();
+          _afterPlace(newState.currentPlayerIndex);
+        }
+      }
+    });
   }
 
   // ── Turn management ──────────────────────────────────────────
@@ -167,7 +263,18 @@ class GameProvider extends ChangeNotifier {
     if (newState == null) return;
 
     _state = newState;
+    _triggerFeedback();
     notifyListeners();
+
+    if (_isOnlineMatch && _onlineGameId != null) {
+      firebaseService.syncMove(_onlineGameId!, {
+        'type': 'place',
+        'tileId': tile.id,
+        'sideA': tile.sideA,
+        'sideB': tile.sideB,
+        'side': side,
+      });
+    }
 
     if (isNetworkGame) {
       nearbyService.sendMove(NetworkMove.place(tile.id, tile.sideA, tile.sideB, side));
@@ -322,6 +429,7 @@ class GameProvider extends ChangeNotifier {
       return;
     }
     _state = newState;
+    _triggerFeedback();
     notifyListeners();
     _afterPlace(newState.currentPlayerIndex);
   }
@@ -367,10 +475,42 @@ class GameProvider extends ChangeNotifier {
   // ── Settings ────────────────────────────────────────────────
 
   void setBoardColor(String color) {
+    _boardColor = color;
     if (_state != null) {
       _state = _state!.copyWith(boardColor: color);
-      notifyListeners();
     }
+    _profileService.saveSettings(_tileSkin, color);
+    notifyListeners();
+  }
+
+  void setTileSkin(String skin) {
+    _tileSkin = skin;
+    String boardColor = _state?.boardColor ?? 'green';
+    _profileService.saveSettings(skin, boardColor);
+    notifyListeners();
+  }
+
+  // ── Online Matchmaking ────────────────────────────────────────
+
+  Future<String> startOnlineMatchmaking() async {
+    try {
+      await firebaseService.init();
+      final gameId = await firebaseService.findMatch(_userProfile ?? Player(index: 0, name: 'Player', type: PlayerType.human));
+      
+      // Start as a guest/host with a simple setup
+      final p1 = _userProfile ?? Player(index: 0, name: 'Player', type: PlayerType.human);
+      final p2 = Player(index: 1, name: 'Opponent', type: PlayerType.network);
+      
+      startOnlineGame(players: [p1, p2], gameId: gameId);
+      
+      return gameId;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  void cancelMatchmaking() {
+    firebaseService.leaveLobby();
   }
 
   @override
