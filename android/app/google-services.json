@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63053436162",
+    "project_id": "domino-lwa3rin-ed2e4",
+    "storage_bucket": "domino-lwa3rin-ed2e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63053436162:android:9fb2e95875389ec08ede1b",
+        "android_client_info": {
+          "package_name": "com.example.domino.lwa3rin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4A5B8qYOgOLJEXP5pD5hyMLjqUfhESFg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

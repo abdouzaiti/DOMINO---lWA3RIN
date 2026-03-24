@@ -6,6 +6,7 @@ import '../models/tile.dart';
 import '../i18n/translations.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/domino_tile.dart';
+import '../widgets/dynamic_background.dart';
 import 'menu_screen.dart';
 
 class GameScreen extends StatelessWidget {
@@ -110,9 +111,11 @@ class _GameBodyState extends State<_GameBody> {
 
         // ── Board ──
         Expanded(
-          child: Container(
-            color: _boardColor(state.boardColor),
-            child: BoardWidget(board: state.board, lang: widget.gp.lang),
+          child: Stack(
+            children: [
+              DynamicBackground(baseColor: _boardColor(state.boardColor)),
+              BoardWidget(board: state.board, lang: widget.gp.lang, tileSkin: widget.gp.tileSkin),
+            ],
           ),
         ),
 
@@ -137,6 +140,7 @@ class _GameBodyState extends State<_GameBody> {
                     orientation: TileOrientation.vertical,
                     halfSize: 36,
                     playable: canPlay,
+                    tileSkin: widget.gp.tileSkin,
                   ),
                 );
               },

@@ -7,10 +7,11 @@ class DominoTileWidget extends StatelessWidget {
   final int sideA;
   final int sideB;
   final TileOrientation orientation;
-  final double halfSize; // size of one pip face (S)
+  final double halfSize;
   final bool hidden;
   final bool playable;
-  final bool isNew; // animate when placed
+  final bool isNew;
+  final String tileSkin;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -23,6 +24,7 @@ class DominoTileWidget extends StatelessWidget {
     this.hidden = false,
     this.playable = false,
     this.isNew = false,
+    this.tileSkin = 'classic',
     this.onTap,
     this.onLongPress,
   });
@@ -42,54 +44,69 @@ class DominoTileWidget extends StatelessWidget {
 
     Widget tileContent;
 
-    if (hidden) {
-      tileContent = Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
+    BoxDecoration decoration;
+    Color pipColor = Colors.black87;
+    Widget? background;
+
+    switch (tileSkin) {
+      case 'algerian':
+        decoration = BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: borderColor, width: 2),
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+        );
+        pipColor = Colors.black;
+        background = Stack(
+          children: [
+            Row(
+              children: [
+                Expanded(child: Container(color: const Color(0xFF006633))), // Green
+                Expanded(child: Container(color: Colors.white)), // White
+              ],
+            ),
+            Center(
+              child: Text('☪️', style: TextStyle(color: const Color(0xFFD21034), fontSize: halfSize * 0.8)),
+            ),
+          ],
+        );
+        break;
+      case 'gold':
+        decoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFFD700), width: 2),
           gradient: const LinearGradient(
+            colors: [Color(0xFFBF953F), Color(0xFFFCF6BA), Color(0xFFB38728)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1c3d6a), Color(0xFF0c1e38)],
           ),
-          boxShadow: [
-            BoxShadow(color: Colors.black54, blurRadius: 4, offset: const Offset(0, 2)),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.07),
-              ),
-            ),
+        );
+        pipColor = const Color(0xFF432c0d);
+        break;
+      case 'wood':
+        decoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF3E2723), width: 2),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF5D4037), Color(0xFF3E2723)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ),
-      );
-    } else {
-      final divider = isH
-          ? Container(
-              width: gap,
-              margin: EdgeInsets.symmetric(vertical: halfSize * 0.1),
-              color: const Color(0xFF9a8860).withOpacity(0.7),
-            )
-          : Container(
-              height: gap,
-              margin: EdgeInsets.symmetric(horizontal: halfSize * 0.1),
-              color: const Color(0xFF9a8860).withOpacity(0.7),
-            );
-
-      final faceA = PipGrid(value: sideA, size: halfSize);
-      final faceB = PipGrid(value: sideB, size: halfSize);
-
-      tileContent = Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
+        );
+        pipColor = Colors.white70;
+        break;
+      case 'neon':
+        decoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF00E5FF), width: 2),
+          color: Colors.black,
+          boxShadow: [BoxShadow(color: const Color(0xFF00E5FF).withOpacity(0.5), blurRadius: 8)],
+        );
+        pipColor = const Color(0xFF00E5FF);
+        break;
+      case 'ivory':
+      default:
+        decoration = BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: borderColor, width: 2),
           gradient: const LinearGradient(
@@ -99,29 +116,60 @@ class DominoTileWidget extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: playable
-                  ? const Color(0xFF2ecc71).withOpacity(0.3)
-                  : Colors.black38,
+              color: playable ? const Color(0xFF2ecc71).withOpacity(0.3) : Colors.black38,
               blurRadius: playable ? 8 : 4,
               offset: const Offset(0, 2),
             ),
-            if (playable)
-              BoxShadow(
-                color: const Color(0xFF2ecc71).withOpacity(0.85),
-                blurRadius: 0,
-                spreadRadius: 1,
-              ),
           ],
+        );
+    }
+
+    if (hidden) {
+      tileContent = Container(
+        width: w,
+        height: h,
+        decoration: decoration.copyWith(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1c3d6a), Color(0xFF0c1e38)],
+          ),
         ),
-        child: isH
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [faceA, divider, faceB],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [faceA, divider, faceB],
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.white.withOpacity(0.07)),
+            ),
+          ),
+        ),
+      );
+    } else {
+      final divider = isH
+          ? Container(width: gap, margin: EdgeInsets.symmetric(vertical: halfSize * 0.1), color: pipColor.withOpacity(0.3))
+          : Container(height: gap, margin: EdgeInsets.symmetric(horizontal: halfSize * 0.1), color: pipColor.withOpacity(0.3));
+
+      final faceA = PipGrid(value: sideA, size: halfSize, color: pipColor);
+      final faceB = PipGrid(value: sideB, size: halfSize, color: pipColor);
+
+      tileContent = ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: w,
+          height: h,
+          decoration: decoration,
+          child: Stack(
+            children: [
+              if (background != null) background,
+              Positioned.fill(
+                child: isH
+                    ? Row(mainAxisSize: MainAxisSize.min, children: [faceA, divider, faceB])
+                    : Column(mainAxisSize: MainAxisSize.min, children: [faceA, divider, faceB]),
               ),
+            ],
+          ),
+        ),
       );
     }
 

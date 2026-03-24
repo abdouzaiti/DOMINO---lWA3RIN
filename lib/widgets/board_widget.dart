@@ -25,9 +25,9 @@ List<_TilePosition> computeSnakeLayout(
   double S = 30,
 }) {
   if (board.isEmpty) return [];
-  const gap = 2.0;
-  const pad = 14.0;
-  final tH = S * 2 + gap; // long dim
+  const gap = 6.0;
+  const pad = 24.0;
+  final tH = S * 2 + 2.0; // long dim
   final tW = S;            // short dim
 
   final perRow = (((areaW - pad * 2) / (tH + gap)).floor()).clamp(3, 999);
@@ -77,6 +77,7 @@ class BoardWidget extends StatelessWidget {
   final bool Function(PlacedTile)? isPlayable;
   final void Function(PlacedTile, String)? onDropZoneTap;
   final String lang;
+  final String tileSkin;
 
   const BoardWidget({
     super.key,
@@ -84,6 +85,7 @@ class BoardWidget extends StatelessWidget {
     this.isPlayable,
     this.onDropZoneTap,
     this.lang = 'en',
+    this.tileSkin = 'classic',
   });
 
   @override
@@ -150,6 +152,7 @@ class BoardWidget extends StatelessWidget {
                         orientation: positions[i].orient,
                         halfSize: S,
                         isNew: i == board.length - 1,
+                        tileSkin: tileSkin,
                       ),
                     ),
                 ],

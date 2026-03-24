@@ -28,7 +28,61 @@ class AILogic {
         return _mediumMove(playable, state);
       case AIDifficulty.hard:
         return _hardMove(playable, state);
+      case AIDifficulty.expert:
+        return _expertMove(playable, state);
     }
+  }
+
+  // Expert: Probability-based & Strategic Blocking
+  static AIMove _expertMove(List<DominoTile> playable, GameState state) {
+    // 1. Calculate Suit Frequencies (how many of each pip have been played)
+    final counts = List.filled(7, 0);
+    for (final t in state.board) {
+      counts[t.sideA]++;
+      counts[t.sideB]++;
+    }
+    // Count AI's own hand too
+    for (final t in state.players[state.currentPlayerIndex].hand) {
+      counts[t.sideA]++;
+      counts[t.sideB]++;
+    }
+
+    AIMove? bestMove;
+    double bestScore = -1000;
+
+    for (final tile in playable) {
+      final sides = tile.getPlayableSides(state.leftEnd, state.rightEnd);
+      for (final side in sides) {
+        double score = tile.total.toDouble();
+
+        final exposedPip = side == 'right'
+            ? (tile.sideA == state.rightEnd ? tile.sideB : tile.sideA)
+            : (tile.sideB == state.leftEnd ? tile.sideA : tile.sideB);
+
+        // A. Blocking Score: If we expose a pip that is mostly used up, 
+        // it's harder for opponents to play.
+        score += (counts[exposedPip] * 2);
+
+        // B. Double preference for control
+        if (tile.isDouble) score += 5;
+
+        // C. Opponent Pass check (Hypothetical: if we knew a player passed on a pip)
+        // For now, let's use a simpler heuristic: if exposedPip is the same as the OTHER end,
+        // we are "closing" the board to that suit, which is great if we have more of it.
+        final otherEnd = side == 'right' ? state.leftEnd : state.rightEnd;
+        if (exposedPip == otherEnd) {
+           int myCountOfPip = state.players[state.currentPlayerIndex].hand.where((t) => t.sideA == exposedPip || t.sideB == exposedPip).length;
+           score += (myCountOfPip * 5); // Cornering the market
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = AIMove(tile, side);
+        }
+      }
+    }
+
+    return bestMove ?? _hardMove(playable, state);
   }
 
   // Easy: random valid move

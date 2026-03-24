@@ -50,16 +50,39 @@ class PlacedTile {
   final int id;
   final int sideA; // connects to previous tile / left end
   final int sideB; // exposes to next tile / right end
+  final double x;  // Optional: stored coordinate
+  final double y;  // Optional: stored coordinate
+  final bool? _isDoubleOverride; // Optional: forced double status
 
-  const PlacedTile({required this.id, required this.sideA, required this.sideB});
+  const PlacedTile({
+    this.id = -1,
+    required this.sideA,
+    required this.sideB,
+    this.x = 0,
+    this.y = 0,
+    bool? isDouble,
+  }) : _isDoubleOverride = isDouble;
 
-  bool get isDouble => sideA == sideB;
+  bool get isDouble => _isDoubleOverride ?? (sideA == sideB);
   int get total => sideA + sideB;
 
-  Map<String, dynamic> toJson() => {'id': id, 'a': sideA, 'b': sideB};
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'a': sideA,
+        'b': sideB,
+        'x': x,
+        'y': y,
+        'isD': _isDoubleOverride
+      };
 
-  factory PlacedTile.fromJson(Map<String, dynamic> j) =>
-      PlacedTile(id: j['id'], sideA: j['a'], sideB: j['b']);
+  factory PlacedTile.fromJson(Map<String, dynamic> j) => PlacedTile(
+        id: j['id'] ?? -1,
+        sideA: j['a'],
+        sideB: j['b'],
+        x: (j['x'] ?? 0).toDouble(),
+        y: (j['y'] ?? 0).toDouble(),
+        isDouble: j['isD'],
+      );
 
   @override
   String toString() => '[$sideA|$sideB]';

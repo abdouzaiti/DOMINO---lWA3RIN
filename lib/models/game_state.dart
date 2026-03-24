@@ -20,6 +20,7 @@ class GameState {
   final String boardColor;
   final bool timerEnabled;
   final int timerDuration; // seconds
+  final bool isTurbo;
   final int matchWinScore;
 
   const GameState({
@@ -38,6 +39,7 @@ class GameState {
     this.boardColor = 'green',
     this.timerEnabled = false,
     this.timerDuration = 30,
+    this.isTurbo = false,
     this.matchWinScore = 100,
   });
 
@@ -76,6 +78,7 @@ class GameState {
     String? boardColor,
     bool? timerEnabled,
     int? timerDuration,
+    bool? isTurbo,
     int? matchWinScore,
   }) =>
       GameState(
@@ -98,6 +101,7 @@ class GameState {
         boardColor: boardColor ?? this.boardColor,
         timerEnabled: timerEnabled ?? this.timerEnabled,
         timerDuration: timerDuration ?? this.timerDuration,
+        isTurbo: isTurbo ?? this.isTurbo,
         matchWinScore: matchWinScore ?? this.matchWinScore,
       );
 }

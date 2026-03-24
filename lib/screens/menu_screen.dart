@@ -6,6 +6,9 @@ import '../models/player.dart';
 import '../i18n/translations.dart';
 import 'game_screen.dart';
 import 'nearby_screen.dart';
+import 'profile_screen.dart';
+import 'tutorial_screen.dart';
+import 'online_lobby_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -14,10 +17,11 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  String _step = 'main'; // main | mode | gameRule | diff | playerCount | names | howto | settings
+  String _step = 'main'; 
   GameRule _rule = GameRule.draw;
   AIDifficulty _diff = AIDifficulty.medium;
   int _playerCount = 2;
+  bool _isTurbo = false;
   bool _teamMode = false;
   List<TextEditingController> _nameControllers = [];
   final TextEditingController _aiNameCtrl = TextEditingController(text: 'You');
@@ -61,19 +65,54 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   // ── MAIN MENU ────────────────────────────────────────────────
-
+  
   Widget _buildMain() {
+    final gp = context.watch<GameProvider>();
+    final profile = gp.userProfile;
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFd4a843).withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFFd4a843).withOpacity(0.2),
+                    radius: 20,
+                    child: Text(profile?.avatarUrl ?? '👤', style: const TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(profile?.name ?? 'SETUP PROFILE', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                      Text('${profile?.wins ?? 0} WINS', style: const TextStyle(color: Color(0xFFd4a843), fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.edit, color: Color(0xFFd4a843), size: 14),
+                ],
+              ),
+            ),
+          ),
           const Spacer(),
           Text('DOMINO', style: TextStyle(
-            fontFamily: 'Impact',
             fontSize: 52,
+            fontWeight: FontWeight.w900,
             color: const Color(0xFFd4a843),
-            letterSpacing: 8,
+            letterSpacing: 4,
             shadows: [Shadow(color: Colors.black54, blurRadius: 20)],
           )),
           const SizedBox(height: 6),
@@ -86,7 +125,9 @@ class _MenuScreenState extends State<MenuScreen> {
           const Spacer(),
           _menuBtn(_t('play'), icon: '▶', onTap: () => setState(() => _step = 'mode')),
           const SizedBox(height: 12),
-          _menuBtn(_t('howto'), icon: '📖', onTap: () => setState(() => _step = 'howto')),
+          _menuBtn('LEARNING CENTER', icon: '🎓', onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (c) => TutorialScreen(lang: context.read<GameProvider>().lang)));
+          }),
           const SizedBox(height: 12),
           _menuBtn(_t('settings'), icon: '⚙️', onTap: () => setState(() => _step = 'settings')),
           const Spacer(),
@@ -119,12 +160,13 @@ class _MenuScreenState extends State<MenuScreen> {
       title: _t('selectMode'),
       child: Column(
         children: [
-          _modeCard('🤖', _t('vsAI'), _t('vsAIDesc'),
-              () => setState(() => _step = 'gameRule')),
-          _modeCard('👥', _t('localMulti'), _t('localMultiDesc'),
-              () => setState(() => _step = 'playerCount')),
+          _modeCard('🤖', _t('vsAI'), _t('vsAIDesc'), () => setState(() => _step = 'gameRule')),
+          _modeCard('👥', _t('localMulti'), _t('localMultiDesc'), () => setState(() => _step = 'playerCount')),
           _modeCard('📡', _t('nearby'), _t('nearbyDesc'), () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const NearbyScreen()));
+          }),
+          _modeCard('🌐', 'Online Multiplayer', 'Real-time matches via Firebase', () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const OnlineLobbyScreen()));
           }),
         ],
       ),
@@ -150,9 +192,7 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 4),
                   Text(desc, style: TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
@@ -190,13 +230,8 @@ class _MenuScreenState extends State<MenuScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active ? const Color(0xFFd4a843) : const Color(0xFF253550),
-            width: active ? 2 : 1,
-          ),
-          color: active
-              ? const Color(0xFFd4a843).withOpacity(0.1)
-              : Colors.white.withOpacity(0.03),
+          border: Border.all(color: active ? const Color(0xFFd4a843) : const Color(0xFF253550), width: active ? 2 : 1),
+          color: active ? const Color(0xFFd4a843).withOpacity(0.1) : Colors.white.withOpacity(0.03),
         ),
         child: Row(
           children: [
@@ -206,10 +241,7 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          color: active ? const Color(0xFFd4a843) : Colors.white,
-                          fontWeight: FontWeight.w800)),
+                  Text(title, style: TextStyle(color: active ? const Color(0xFFd4a843) : Colors.white, fontWeight: FontWeight.w800)),
                   Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
               ),
@@ -232,7 +264,15 @@ class _MenuScreenState extends State<MenuScreen> {
           _diffBtn(AIDifficulty.medium, _t('medium'), _t('mediumDesc'), '🎯'),
           const SizedBox(height: 10),
           _diffBtn(AIDifficulty.hard, _t('hard'), _t('hardDesc'), '🔥'),
-          const SizedBox(height: 28),
+          const SizedBox(height: 10),
+          _diffBtn(AIDifficulty.expert, _t('expert'), _t('expertDesc'), '🧠'),
+          const SizedBox(height: 24),
+          _settingRow(_t('turbo'), Switch(
+            value: _isTurbo,
+            onChanged: (v) => setState(() => _isTurbo = v),
+            activeColor: const Color(0xFFd4a843),
+          )),
+          const SizedBox(height: 24),
           _menuBtn(_t('startGame'), onTap: _startVsAI),
         ],
       ),
@@ -247,10 +287,7 @@ class _MenuScreenState extends State<MenuScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active ? const Color(0xFFd4a843) : const Color(0xFF253550),
-            width: active ? 2 : 1,
-          ),
+          border: Border.all(color: active ? const Color(0xFFd4a843) : const Color(0xFF253550), width: active ? 2 : 1),
           color: active ? const Color(0xFFd4a843).withOpacity(0.1) : Colors.transparent,
         ),
         child: Row(
@@ -261,10 +298,7 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: TextStyle(
-                          color: active ? const Color(0xFFd4a843) : Colors.white,
-                          fontWeight: FontWeight.w800)),
+                  Text(label, style: TextStyle(color: active ? const Color(0xFFd4a843) : Colors.white, fontWeight: FontWeight.w800)),
                   Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
               ),
@@ -282,61 +316,59 @@ class _MenuScreenState extends State<MenuScreen> {
       title: _t('howManyPlayers'),
       child: Column(
         children: [
-          for (int n in [2, 3, 4])
-            _playerCountBtn(n),
+          Row(
+            children: [2, 3, 4].map((n) {
+              final active = _playerCount == n;
+              return Expanded(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () => setState(() => _playerCount = n),
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: active ? const Color(0xFFd4a843).withOpacity(0.2) : Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: active ? const Color(0xFFd4a843) : Colors.white12),
+                    ),
+                    child: Center(child: Text(n.toString(), style: TextStyle(color: active ? const Color(0xFFd4a843) : Colors.white54, fontSize: 22, fontWeight: FontWeight.bold))),
+                  ),
+                ),
+              ));
+            }).toList(),
+          ),
+          if (_playerCount == 4) ...[
+            const SizedBox(height: 20),
+            _settingRow(_t('team2v2'), Switch(
+              value: _teamMode,
+              onChanged: (v) => setState(() => _teamMode = v),
+              activeColor: const Color(0xFFd4a843),
+            )),
+          ],
+          const SizedBox(height: 28),
+          _menuBtn(_t('next') ?? 'NEXT', onTap: () {
+            final gp = context.read<GameProvider>();
+            _nameControllers = List.generate(_playerCount, (i) => TextEditingController(text: i == 0 ? (gp.userProfile?.name ?? 'Player') : 'Player ${i + 1}'));
+            setState(() => _step = 'names');
+          }),
         ],
       ),
     );
   }
 
-  Widget _playerCountBtn(int n) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _playerCount = n;
-          _teamMode = n == 4;
-          _nameControllers = List.generate(
-              n, (i) => TextEditingController(text: 'Player ${i + 1}'));
-          _step = 'names';
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF253550)),
-          color: Colors.white.withOpacity(0.04),
-        ),
-        child: Row(
-          children: [
-            Text(List.filled(n, '👤').join(' '), style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 14),
-            Text('$n ${_t('players')}',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-            const Spacer(),
-            const Text('›', style: TextStyle(color: Color(0xFFd4a843), fontSize: 20)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── PLAYER NAMES ─────────────────────────────────────────────
+  // ── NAMES ──────────────────────────────────────────────────
 
   Widget _buildNames() {
     return _scaffold(
       title: _t('enterNames'),
       child: Column(
         children: [
-          for (int i = 0; i < _nameControllers.length; i++)
+          for (int i = 0; i < _playerCount; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  Text(Player.emojis[i], style: const TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
+                  CircleAvatar(backgroundColor: const Color(0xFF253550), radius: 18, child: Text((i + 1).toString(), style: const TextStyle(fontSize: 12, color: Color(0xFFd4a843)))),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: TextField(
                       controller: _nameControllers[i],
@@ -344,11 +376,8 @@ class _MenuScreenState extends State<MenuScreen> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.07),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
                     ),
                   ),
@@ -370,26 +399,17 @@ class _MenuScreenState extends State<MenuScreen> {
       title: _t('howToPlay'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: rules
-            .map((k) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('•',
-                          style: TextStyle(
-                              color: Color(0xFFd4a843),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900)),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: Text(_t(k),
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 14, height: 1.5))),
-                    ],
-                  ),
-                ))
-            .toList(),
+        children: rules.map((k) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('•', style: TextStyle(color: Color(0xFFd4a843), fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(_t(k), style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5))),
+            ],
+          ),
+        )).toList(),
       ),
     );
   }
@@ -416,22 +436,55 @@ class _MenuScreenState extends State<MenuScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: gp.lang == l
-                          ? const Color(0xFFd4a843)
-                          : const Color(0xFF1e2e44),
-                    ),
-                    color: gp.lang == l
-                        ? const Color(0xFFd4a843).withOpacity(0.2)
-                        : Colors.transparent,
+                    border: Border.all(color: gp.lang == l ? const Color(0xFFd4a843) : const Color(0xFF1e2e44)),
+                    color: gp.lang == l ? const Color(0xFFd4a843).withOpacity(0.2) : Colors.transparent,
                   ),
-                  child: Text(l.toUpperCase(),
-                      style: TextStyle(
-                          color: gp.lang == l
-                              ? const Color(0xFFd4a843)
-                              : Colors.white54,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12)),
+                  child: Text(l.toUpperCase(), style: TextStyle(color: gp.lang == l ? const Color(0xFFd4a843) : Colors.white54, fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+              ),
+            )).toList(),
+          )),
+          _settingRow('TILE SKIN', Row(
+            children: ['classic', 'algerian', 'ivory', 'gold', 'wood', 'neon'].map((s) => Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: GestureDetector(
+                onTap: () => gp.setTileSkin(s),
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: gp.tileSkin == s ? const Color(0xFFd4a843) : Colors.white24),
+                    color: gp.tileSkin == s ? const Color(0xFFd4a843).withOpacity(0.2) : Colors.transparent,
+                  ),
+                  child: Center(
+                    child: Text(
+                      {
+                        'classic': '⚪',
+                        'algerian': '🇩🇿',
+                        'ivory': '🦴',
+                        'gold': '🟡',
+                        'wood': '🪵',
+                        'neon': '⚛️',
+                      }[s] ?? '',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+            )).toList(),
+          )),
+          _settingRow('TABLE COLOR', Row(
+            children: ['green', 'navy', 'maroon', 'slate', 'purple'].map((c) => Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: GestureDetector(
+                onTap: () => gp.setBoardColor(c),
+                child: Container(
+                  width: 24, height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _getColor(c),
+                    border: Border.all(color: (gp.state?.boardColor ?? 'green') == c ? Colors.white : Colors.transparent, width: 2),
+                  ),
                 ),
               ),
             )).toList(),
@@ -441,17 +494,23 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  Color _getColor(String c) {
+    switch (c) {
+      case 'navy': return const Color(0xFF1a2a52);
+      case 'maroon': return const Color(0xFF521820);
+      case 'slate': return const Color(0xFF283040);
+      case 'purple': return const Color(0xFF2d1b4e);
+      default: return const Color(0xFF1d5c38);
+    }
+  }
+
   Widget _settingRow(String label, Widget control) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFF182030))),
-      ),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF182030)))),
       child: Row(
         children: [
-          Expanded(
-              child: Text(label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14))),
+          Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14))),
           control,
         ],
       ),
@@ -465,9 +524,7 @@ class _MenuScreenState extends State<MenuScreen> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFF182030))),
-          ),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF182030)))),
           child: Row(
             children: [
               GestureDetector(
@@ -475,21 +532,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 child: const Icon(Icons.arrow_back_ios, color: Color(0xFFd4a843), size: 20),
               ),
               const SizedBox(width: 12),
-              Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                      letterSpacing: 2)),
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 2)),
             ],
           ),
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: child,
-          ),
-        ),
+        Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: child)),
       ],
     );
   }
@@ -498,31 +545,18 @@ class _MenuScreenState extends State<MenuScreen> {
 
   void _startVsAI() {
     final gp = context.read<GameProvider>();
-    gp.startVsAI(
-      playerName: _aiNameCtrl.text.trim().isEmpty ? 'You' : _aiNameCtrl.text.trim(),
-      difficulty: _diff,
-      rule: _rule,
-      boardColor: 'green',
-    );
+    gp.startVsAI(difficulty: _diff, rule: _rule, boardColor: gp.state?.boardColor ?? 'green', isTurbo: _isTurbo);
     _goToGame();
   }
 
   void _startLocalMulti() {
-    final names = _nameControllers.map((c) {
-      final t = c.text.trim();
-      return t.isEmpty ? 'Player' : t;
-    }).toList();
-    context.read<GameProvider>().startLocalMulti(
-          names: names,
-          rule: _rule,
-          boardColor: 'green',
-          teamMode: _teamMode,
-        );
+    final names = _nameControllers.map((c) => c.text.trim().isEmpty ? 'Player' : c.text.trim()).toList();
+    final gp = context.read<GameProvider>();
+    gp.startLocalMulti(names: names, rule: _rule, boardColor: gp.state?.boardColor ?? 'green', teamMode: _teamMode, isTurbo: _isTurbo);
     _goToGame();
   }
 
   void _goToGame() {
-    Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => const GameScreen()));
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GameScreen()));
   }
 }

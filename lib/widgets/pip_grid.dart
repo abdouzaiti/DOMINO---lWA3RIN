@@ -22,12 +22,14 @@ class PipGrid extends StatelessWidget {
   final int value;
   final double size;
   final bool hidden;
+  final Color? color;
 
   const PipGrid({
     super.key,
     required this.value,
     required this.size,
     this.hidden = false,
+    this.color,
   });
 
   @override
@@ -52,7 +54,7 @@ class PipGrid extends StatelessWidget {
                     height: pipSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF1a1a1a),
+                      color: color ?? const Color(0xFF1a1a1a),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black54,
